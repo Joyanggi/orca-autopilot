@@ -1,0 +1,12 @@
+# Orca orchestration worker reports (worker_done / ask / escalation) must reach the coordinator.
+# Scope is deliberately narrow: only `orca orchestration send` and `orca orchestration ask`.
+prefix_rule(
+    pattern = ["orca", "orchestration", "send"],
+    decision = "allow",
+    justification = "Orca worker reports to its coordinator",
+)
+prefix_rule(
+    pattern = ["orca", "orchestration", "ask"],
+    decision = "allow",
+    justification = "Orca worker questions to its coordinator",
+)

@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# oap — orca-autopilot: set up Orca + Claude Code + Codex orchestration on a Mac.
+set -euo pipefail
+
+# Resolve the kit root even when bin/oap is reached through a symlink.
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+OAP_ROOT="$(cd -P "$(dirname "$src")/.." && pwd)"
+export OAP_ROOT
+
+# shellcheck source=../lib/common.sh
+. "$OAP_ROOT/lib/common.sh"
+# shellcheck source=../lib/doctor.sh
+. "$OAP_ROOT/lib/doctor.sh"
+# shellcheck source=../lib/setup.sh
+. "$OAP_ROOT/lib/setup.sh"
+# shellcheck source=../lib/project.sh
+. "$OAP_ROOT/lib/project.sh"
+# shellcheck source=../lib/github.sh
+. "$OAP_ROOT/lib/github.sh"
+# shellcheck source=../lib/orca.sh
+. "$OAP_ROOT/lib/orca.sh"
+
+usage() {
+  cat <<EOF
+${C_BOLD}orca-autopilot ${OAP_VERSION}${C_RESET} — Orca에서 Claude Code·Codex 자동 오케스트레이션을 처음부터 세팅합니다.
+
+사용법: oap <명령> [옵션]
+
+  doctor                 맥·도구·로그인·Orca 상태를 점검합니다 (읽기 전용)
+  setup [--mobile]       맥 전역 의존성, 에이전트 CLI, Orca 스킬, Codex 규칙을 설치합니다
+  init <폴더> [옵션]      저장소에 하네스(문서·규칙·스킬·CI·템플릿)를 만듭니다
+  github [<폴더>]         GitHub 저장소·main 룰셋·자동 병합·브랜치 자동 삭제를 설정합니다
+  orca [<폴더>]           Orca에 저장소를 등록하고 마스터 워크트리·채팅을 엽니다
+  merge-runner [<폴더>]   검토 완료 병합 실행기를 맥에 설치(갱신)합니다
+  gui                    Orca 앱 화면에서만 바꿀 수 있는 설정 목록과 자동 적용 프롬프트
+  all <폴더> [옵션]       doctor → setup → init → merge-runner → github → orca 순서로 실행
+
+공통 옵션
+  --dry-run              실행할 명령만 보여주고 아무것도 바꾸지 않습니다
+  --yes                  확인 질문에 모두 '예'로 답합니다 (외부 게시 포함, 주의)
+  -h, --help             도움말
+
+init 옵션
+  --name <표시 이름>      예: 트바            (기본: 폴더 이름)
+  --key <짧은 키>         예: tb  → 'TB CI', 'tb/review-claude' 등에 사용
+  --repo <owner/name>    GitHub 저장소 (기본: gh 로그인 계정/폴더 이름)
+  --preset <expo|generic> 스택 프리셋 (기본: generic)
+  --force                기존 파일을 백업하고 덮어씁니다 (기본은 *.oap-new로 따로 저장)
+
+예시
+  oap doctor
+  oap setup --mobile
+  oap all ~/orca/mobile-apps/my-app --name 트바 --key tb --preset expo
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  [ $# -gt 0 ] && shift
+  # Global flags may appear anywhere.
+  local args=() a
+  for a in "$@"; do
+    case "$a" in
+      --dry-run) OAP_DRY_RUN=1 ;;
+      --yes|-y) OAP_YES=1 ;;
+      *) args+=("$a") ;;
+    esac
+  done
+  export OAP_DRY_RUN OAP_YES
+  set -- ${args[@]+"${args[@]}"}
+
+  case "$cmd" in
+    doctor) require_macos; cmd_doctor "$@" ;;
+    setup) require_macos; cmd_setup "$@" ;;
+    init) cmd_init "$@" ;;
+    github) cmd_github "$@" ;;
+    orca) require_macos; cmd_orca "$@" ;;
+    merge-runner) cmd_merge_runner "$@" ;;
+    gui) cmd_gui "$@" ;;
+    all) require_macos; cmd_all "$@" ;;
+    version|--version|-v) say "$OAP_VERSION" ;;
+    ""|help|-h|--help) usage ;;
+    *) err "알 수 없는 명령: $cmd"; usage; exit 2 ;;
+  esac
+}
+
+cmd_all() {
+  [ $# -ge 1 ] || die "사용법: oap all <폴더> [init 옵션]"
+  local dir="$1"
+  cmd_doctor --no-exit || true
+  local mobile=""
+  case " $* " in *" --preset expo "*|*" --preset=expo "*) mobile="--mobile" ;; esac
+  cmd_setup $mobile
+  cmd_init "$@"
+  cmd_merge_runner "$dir"
+  cmd_github "$dir"
+  cmd_orca "$dir"
+  step "완료"
+  ok "남은 일: 'oap gui'의 Orca 앱 설정을 적용한 뒤, 마스터 채팅에 '/orchestrate <할 일>'을 보내세요."
+}
+
+main "$@"

@@ -1,0 +1,34 @@
+# Dependencies and build outputs
+node_modules/
+.expo/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+__pycache__/
+
+# Local environment and signing
+.env
+.env.*
+!.env.example
+*.local.env
+*.p8
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+*.jks
+*.keystore
+
+# Machine-specific files
+.DS_Store
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+*.oap-bak.*
+*.oap-new
