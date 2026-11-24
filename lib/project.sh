@@ -109,10 +109,11 @@ PY
 
   step "oap init — $name ($key, $preset) → $dir"
   if [ ! -d "$dir/.git" ]; then run git -C "$dir" init -b main; fi
-  local rc=0
+  local rc=0 flags=()
+  [ -n "$force" ] && flags+=(--force)
+  [ "$OAP_DRY_RUN" = 1 ] && flags+=(--dry-run)
   "$py" -I "$OAP_ROOT/lib/render.py" "$vars" "$dir" \
-    "$OAP_ROOT/templates/base" "$OAP_ROOT/templates/presets/$preset" $force \
-    $([ "$OAP_DRY_RUN" = 1 ] && echo --dry-run) || rc=$?
+    "$OAP_ROOT/templates/base" "$OAP_ROOT/templates/presets/$preset" ${flags[@]+"${flags[@]}"} || rc=$?
   [ "$rc" = 0 ] || [ "$rc" = 3 ] || die "템플릿 렌더링 실패"
   if [ "$OAP_DRY_RUN" != 1 ]; then
     "$py" -I -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); json.dump(d,open(sys.argv[2],"w",encoding="utf-8"),ensure_ascii=False,indent=2); open(sys.argv[2],"a").write("\n")' \

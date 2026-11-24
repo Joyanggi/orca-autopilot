@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # Shared helpers. Compatible with the bash 3.2 that ships with macOS.
 
+# shellcheck disable=SC2034  # used by the files that source this one
 OAP_VERSION="0.1.0"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
